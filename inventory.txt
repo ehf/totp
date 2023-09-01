@@ -1,0 +1,8 @@
+[test]
+test-dev-1  ansible_host=10.10.10.1
+#
+test-dev-2  ansible_host=10.10.10.2
+test-dev-3  ansible_host=10.10.10.3
+test-dev-4  ansible_host=10.10.10.4
+test-dev-5  ansible_host=10.10.10.5
+

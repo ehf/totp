@@ -1,0 +1,10 @@
+---
+# handlers file for totp
+
+- name: restart sshd
+  service: 
+    name: sshd
+    state: restarted
+
+- name: set permissive selinux
+  command: /usr/sbin/setenforce 0

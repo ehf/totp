@@ -1,0 +1,15 @@
+--- 
+
+# ansible-playbook -i inventory.txt run-it.yml -b -u $USER
+#
+# to copy totp files to hosts:
+# 1. first, run google-authenticator utility on remote host to generate totp secret
+# 2. grap copy of totp file and save here in ./totp/files/
+# 2. next, run this playbook with copy_totp=True to distribute totp file to your inventory hosts
+#
+# ansible-playbook -i inventory.txt run-it.yml -b -u $USER -e copy_totp=True
+
+- hosts: all
+  gather_facts: True
+  roles:
+    - totp 

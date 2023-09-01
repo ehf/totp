@@ -1,0 +1,96 @@
+---
+# tasks file for totp
+
+- debug: msg="{{ ansible_distribution_major_version }}"
+
+- name: "selinux in permissive mode"
+  selinux:
+    policy: targeted
+    state: permissive
+
+- name: "setenforce permissive selinux"
+  command: /usr/sbin/setenforce 0
+  when:
+    - ansible_selinux.mode == 'enforcing'
+
+- debug: msg="{{ epel_repo_gpg_key_url }}"
+
+# import via EPEL URL
+- name: "Import EPEL GPG key"
+  rpm_key:
+    key: "{{ epel_repo_gpg_key_url }}"
+    state: present
+  register: import_result
+  until: import_result is succeeded
+  retries: 5
+  delay: 10
+
+# install via EPEL URL
+- name: "Install google-authenticator"
+  dnf: 
+    name: "{{ google_authenticator_rpm }}"
+    state: present
+  register: install_result
+  until: install_result is succeeded
+  retries: 5
+  delay: 10
+
+- name: "Install qrencode packages"
+  dnf:
+    name: "{{ qrencode_packages }}"
+    state: present
+
+- name: "Create test users"
+  user:
+    name: "{{ item }}"
+    comment: "{{ item }}"
+    shell: "/bin/bash"
+  loop: "{{ local_users }}"
+
+- name: "Copy public key to test user"
+  authorized_key:
+    user: "{{ item }}"
+    key: "{{ lookup('file', '~/.ssh/id_ed25519_test.pub') }}"
+  loop: "{{ local_users }}"
+
+- name: "Copy test private key to test user"
+  copy:
+    src: id_ed25519_test
+    dest: "/home/{{ local_users | first }}/.ssh/id_ed25519_test"
+    owner: "{{ local_users | first }}"
+    group: "{{ local_users | first }}"
+    mode: '0600'
+
+- name: "Deploy updated /etc/pam.d/sshd"
+  template:
+    src: pam.d/sshd.j2
+    dest: /etc/pam.d/sshd
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+  notify:
+    - restart sshd
+
+- name: "Deploy updated /etc/ssh/sshd_config"
+  template:
+    src: ssh/sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: '0600'
+    backup: yes
+  notify:
+    - restart sshd
+
+- name: "copy test9 totp"
+  copy:
+    src: totp.test9
+    dest: /home/test9/.ssh/totp
+    owner: test9
+    group: test9
+    mode: '0400'
+  when: 
+    - copy_totp | bool
+
+# google-authenticator --secret=/home/$USER/.ssh/totp --time-based --disallow-reuse --rate-limit=3 --rate-time=30 --window-size=3 --step-size=30 --qr-mode=UTF8 --force 
